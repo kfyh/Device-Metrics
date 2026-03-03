@@ -15,13 +15,19 @@
  * It is designed to run in a browser environment.
  */
 
-import DeviceDetector from "device-detector-js";
-//import DeviceDetector from "node-device-detector"; //More recently updated
-
+import DeviceDetector from "node-device-detector";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
 // ─────────────────────────────────────────────────────────────────────────────
+
+export type BotInfo = {
+  detected: boolean;
+  name: string | null;
+  category: string | null;
+  url: string | null;
+  producerName: string | null;
+};
 
 export interface UAMetrics {
   raw: string;
@@ -42,13 +48,7 @@ export interface UAMetrics {
     brand: string | null;
     model: string | null;
   };
-  bot: {
-    detected: boolean;
-    name: string | null;
-    category: string | null;
-    url: string | null;
-    producerName: string | null;
-  };
+  bot: BotInfo;
   inAppBrowser: boolean;
 }
 
@@ -220,6 +220,33 @@ function isInAppBrowser(ua: string): boolean {
   return /FBAN|FBAV|Instagram|Twitter|TikTok|Pinterest|Snapchat|WeChat|Line\/|MicroMessenger/i.test(ua);
 }
 
+function detectBot(raw: string): BotInfo {
+
+   // Custom bot detection since node-device-detector doesn't have built-in bot detection
+  const isBot = /bot|crawl|spider|slurp|googlebot|bingbot|yandexbot|duckduckbot|baiduspider|facebookexternalhit|twitterbot|rogerbot|linkedinbot|embedly|quora link preview|showyoubot|outbrain|pinterest|slackbot|vkShare|W3C_Validator|validator/i.test(raw);
+
+  let botInfo: BotInfo = {
+    detected: false,
+    name: null,
+    category: null,
+    url: null,
+    producerName: null
+  };
+
+  if (isBot) {
+    // Simple bot detection - you might want to expand this
+    botInfo = {
+      detected: true,
+      name: raw.match(/(bot|crawl|spider|slurp|googlebot|bingbot|yandexbot|duckduckbot|baiduspider|facebookexternalhit|twitterbot|rogerbot|linkedinbot|embedly|quora link preview|showyoubot|outbrain|pinterest|slackbot|vkShare|W3C_Validator|validator)/i)?.[0] ?? "Unknown Bot",
+      category: "Search bot",
+      url: null,
+      producerName: null
+    };
+  }
+
+  return botInfo;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // UA Inspection
 // ─────────────────────────────────────────────────────────────────────────────
@@ -227,7 +254,8 @@ function isInAppBrowser(ua: string): boolean {
 function inspectUA(): UAMetrics {
   const raw = navigator.userAgent;
   const detector = new DeviceDetector();
-  const parsed = detector.parse(raw);
+  const parsed = detector.detect(raw);
+  const botInfo = detectBot(raw);
 
   return {
     raw,
@@ -248,13 +276,7 @@ function inspectUA(): UAMetrics {
       brand: parsed.device?.brand ?? null,
       model: parsed.device?.model ?? null,
     },
-    bot: {
-      detected: !!parsed.bot,
-      name: parsed.bot?.name ?? null,
-      category: parsed.bot?.category ?? null,
-      url: parsed.bot?.url ?? null,
-      producerName: parsed.bot?.producer?.name ?? null,
-    },
+    bot: botInfo,
     inAppBrowser: isInAppBrowser(raw),
   };
 }
