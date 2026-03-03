@@ -1,0 +1,1051 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Device Inspector</title>
+  <style>
+/* ── Tokens ─────────────────────────────────────────────────────────── */
+:root {
+  --bg:        #0a0e14;
+  --surface:   #111820;
+  --border:    #1e2d3d;
+  --accent:    #00d4ff;
+  --accent2:   #00ff9f;
+  --warn:      #ff6b35;
+  --text:      #cdd6e0;
+  --muted:     #4a6070;
+  --key:       #79b8ff;
+  --str:       #a8d8a8;
+  --num:       #f8c77e;
+  --bool-true: #00ff9f;
+  --bool-false:#ff6b6b;
+  --null-col:  #6e8898;
+  --radius:    6px;
+  --font-mono: "JetBrains Mono", "Fira Code", "Cascadia Code", monospace;
+  --font-ui:   "DM Sans", "Outfit", system-ui, sans-serif;
+}
+
+/* ── Reset ───────────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-ui);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Header ──────────────────────────────────────────────────────────── */
+header {
+  padding: 28px 32px 20px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  position: relative;
+  overflow: hidden;
+}
+
+header::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse 60% 120% at 10% 50%, rgba(0,212,255,0.06) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.logo {
+  width: 40px;
+  height: 40px;
+  border: 1.5px solid var(--accent);
+  border-radius: var(--radius);
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+
+.logo svg { width: 22px; height: 22px; }
+
+.header-text h1 {
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.3px;
+  color: #e8f4f8;
+}
+
+.header-text p {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+
+.status-pill {
+  margin-left: auto;
+  padding: 5px 12px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  border: 1px solid;
+  flex-shrink: 0;
+}
+
+.status-pill.loading {
+  border-color: var(--accent);
+  color: var(--accent);
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+.status-pill.done {
+  border-color: var(--accent2);
+  color: var(--accent2);
+  animation: none;
+}
+
+.status-pill.error {
+  border-color: var(--warn);
+  color: var(--warn);
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+/* ── Toolbar ─────────────────────────────────────────────────────────── */
+.toolbar {
+  padding: 12px 32px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+
+.toolbar-label {
+  font-size: 11px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  margin-right: 4px;
+}
+
+.btn {
+  padding: 5px 14px;
+  border-radius: var(--radius);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  transition: all 0.15s;
+  font-family: var(--font-ui);
+}
+
+.btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.btn.primary {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: rgba(0,212,255,0.06);
+}
+
+.btn.primary:hover {
+  background: rgba(0,212,255,0.14);
+}
+
+.timestamp {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--muted);
+  font-family: var(--font-mono);
+}
+
+/* ── Main layout ─────────────────────────────────────────────────────── */
+main {
+  flex: 1;
+  padding: 24px 32px;
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  gap: 20px;
+  max-width: 1400px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+/* ── Section nav ─────────────────────────────────────────────────────── */
+.section-nav {
+  position: sticky;
+  top: 20px;
+  align-self: start;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.nav-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--muted);
+  padding: 0 8px;
+  margin-bottom: 6px;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  border-radius: var(--radius);
+  font-size: 13px;
+  cursor: pointer;
+  color: var(--muted);
+  transition: all 0.12s;
+  border: 1px solid transparent;
+  text-decoration: none;
+}
+
+.nav-item:hover, .nav-item.active {
+  background: var(--surface);
+  border-color: var(--border);
+  color: var(--text);
+}
+
+.nav-item.active {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.nav-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  flex-shrink: 0;
+}
+
+/* ── Content ─────────────────────────────────────────────────────────── */
+.content {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
+/* ── Summary cards ───────────────────────────────────────────────────── */
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 10px;
+  margin-bottom: 4px;
+}
+
+.summary-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.summary-card .label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--muted);
+}
+
+.summary-card .value {
+  font-size: 14px;
+  font-weight: 600;
+  color: #e8f4f8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.summary-card .sub {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.badge {
+  display: inline-block;
+  padding: 1px 7px;
+  border-radius: 10px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.badge.yes { background: rgba(0,255,159,0.12); color: var(--accent2); }
+.badge.no  { background: rgba(255,107,107,0.12); color: #ff6b6b; }
+
+/* ── JSON panels ─────────────────────────────────────────────────────── */
+.json-section {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.json-section-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  cursor: pointer;
+  user-select: none;
+  border-bottom: 1px solid transparent;
+  transition: background 0.12s;
+}
+
+.json-section-header:hover { background: rgba(255,255,255,0.02); }
+
+.json-section-header.open {
+  border-bottom-color: var(--border);
+}
+
+.section-icon {
+  width: 28px; height: 28px;
+  border-radius: 5px;
+  display: grid;
+  place-items: center;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.section-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #e8f4f8;
+  flex: 1;
+}
+
+.section-subtitle {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.chevron {
+  width: 16px; height: 16px;
+  color: var(--muted);
+  transition: transform 0.2s;
+  flex-shrink: 0;
+}
+
+.chevron.open { transform: rotate(180deg); }
+
+.json-body {
+  display: none;
+  padding: 16px;
+  overflow-x: auto;
+}
+
+.json-body.open { display: block; }
+
+/* ── JSON renderer ───────────────────────────────────────────────────── */
+.json-tree {
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  line-height: 1.7;
+}
+
+.json-tree ul {
+  list-style: none;
+  padding-left: 18px;
+  border-left: 1px solid var(--border);
+  margin-left: 2px;
+}
+
+.json-tree li { position: relative; }
+
+.collapsible-toggle {
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.collapsible-toggle::before {
+  content: "▾";
+  font-size: 10px;
+  color: var(--muted);
+  display: inline-block;
+  transition: transform 0.15s;
+  width: 10px;
+}
+
+.collapsible-toggle.collapsed::before { transform: rotate(-90deg); }
+
+.collapsible-children { display: block; }
+.collapsible-children.hidden { display: none; }
+.collapsed-preview {
+  display: none;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.collapsible-toggle.collapsed + .collapsible-children { display: none; }
+.collapsible-toggle.collapsed ~ .collapsed-preview { display: inline; }
+
+.jk { color: var(--key); }
+.js { color: var(--str); }
+.jn { color: var(--num); }
+.jbt { color: var(--bool-true); font-weight: 600; }
+.jbf { color: var(--bool-false); font-weight: 600; }
+.jnull { color: var(--null-col); font-style: italic; }
+.jbrace { color: var(--muted); }
+.jcomma { color: var(--muted); }
+
+/* ── Loading skeleton ────────────────────────────────────────────────── */
+.skeleton {
+  background: linear-gradient(90deg, var(--surface) 25%, var(--border) 50%, var(--surface) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: var(--radius);
+  height: 14px;
+}
+
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.loading-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 24px;
+}
+
+/* ── Error state ─────────────────────────────────────────────────────── */
+.error-panel {
+  background: rgba(255,107,53,0.06);
+  border: 1px solid rgba(255,107,53,0.3);
+  border-radius: var(--radius);
+  padding: 20px 24px;
+  color: var(--warn);
+  font-size: 13px;
+}
+
+/* ── Compressed texture matrix ───────────────────────────────────────── */
+.texture-matrix {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 14px 16px;
+}
+
+.texture-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border-radius: var(--radius);
+  font-size: 12px;
+  font-family: var(--font-mono);
+  border: 1px solid;
+}
+
+.texture-item.supported {
+  border-color: rgba(0,255,159,0.3);
+  background: rgba(0,255,159,0.05);
+  color: var(--accent2);
+}
+
+.texture-item.unsupported {
+  border-color: var(--border);
+  background: transparent;
+  color: var(--muted);
+}
+
+.texture-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+/* ── Responsive ──────────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  main { grid-template-columns: 1fr; padding: 16px; }
+  .section-nav { position: static; flex-direction: row; flex-wrap: wrap; }
+  header { padding: 20px 16px 16px; }
+  .toolbar { padding: 10px 16px; }
+  .summary-grid { grid-template-columns: repeat(2, 1fr); }
+}
+  </style>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=JetBrains+Mono:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+</head>
+<body>
+
+<!-- ── Header ──────────────────────────────────────────────────────────────── -->
+<header>
+  <div class="logo">
+    <svg viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.5">
+      <rect x="2" y="3" width="20" height="14" rx="2"/>
+      <path d="M8 21h8M12 17v4"/>
+      <circle cx="12" cy="10" r="3"/>
+    </svg>
+  </div>
+  <div class="header-text">
+    <h1>Device Inspector</h1>
+    <p>UA · GPU · Screen · Platform telemetry probe</p>
+  </div>
+  <div class="status-pill loading" id="statusPill">Scanning…</div>
+</header>
+
+<!-- ── Toolbar ─────────────────────────────────────────────────────────────── -->
+<div class="toolbar">
+  <span class="toolbar-label">View</span>
+  <button class="btn primary" onclick="expandAll()">Expand All</button>
+  <button class="btn" onclick="collapseAll()">Collapse All</button>
+  <button class="btn" onclick="copyJSON()">Copy JSON</button>
+  <button class="btn" onclick="downloadJSON()">Download JSON</button>
+  <span class="timestamp" id="ts"></span>
+</div>
+
+<!-- ── Main ────────────────────────────────────────────────────────────────── -->
+<main>
+  <!-- Nav -->
+  <nav class="section-nav">
+    <div class="nav-label">Sections</div>
+    <a class="nav-item active" href="#sec-summary" onclick="setActive(this)">
+      <span class="nav-dot"></span>Summary
+    </a>
+    <a class="nav-item" href="#sec-ua" onclick="setActive(this)">
+      <span class="nav-dot"></span>User Agent
+    </a>
+    <a class="nav-item" href="#sec-gpu" onclick="setActive(this)">
+      <span class="nav-dot"></span>GPU / WebGL
+    </a>
+    <a class="nav-item" href="#sec-webgpu" onclick="setActive(this)">
+      <span class="nav-dot"></span>WebGPU
+    </a>
+    <a class="nav-item" href="#sec-textures" onclick="setActive(this)">
+      <span class="nav-dot"></span>Compressed Textures
+    </a>
+    <a class="nav-item" href="#sec-screen" onclick="setActive(this)">
+      <span class="nav-dot"></span>Screen
+    </a>
+    <a class="nav-item" href="#sec-platform" onclick="setActive(this)">
+      <span class="nav-dot"></span>Platform
+    </a>
+    <a class="nav-item" href="#sec-raw" onclick="setActive(this)">
+      <span class="nav-dot"></span>Full JSON
+    </a>
+  </nav>
+
+  <!-- Content -->
+  <div class="content" id="content">
+    <div class="loading-panel">
+      <div class="skeleton" style="width:60%"></div>
+      <div class="skeleton" style="width:80%"></div>
+      <div class="skeleton" style="width:50%"></div>
+      <div class="skeleton" style="width:70%"></div>
+      <div class="skeleton" style="width:90%"></div>
+    </div>
+  </div>
+</main>
+
+<!-- ─────────────────────────────────────────────────────────────────────────
+     NOTE: In your webpack build, import inspectDevice from './device-inspector'
+     and call it here. For this standalone demo we inline a self-contained
+     version of the probe so the page works without a bundler.
+───────────────────────────────────────────────────────────────────────────── -->
+<script>
+// ── Inline device-detector-js stub (replace with real npm import when bundling)
+// When using webpack: import DeviceDetector from 'device-detector-js';
+// This stub provides basic parsing for the standalone HTML demo.
+const DeviceDetectorStub = {
+  parse(ua) {
+    const result = { client: {}, os: {}, device: {}, bot: null };
+
+    // Browser
+    const browsers = [
+      [/Chrome\/(\S+)/i, "Chrome", "Blink"],
+      [/Firefox\/(\S+)/i, "Firefox", "Gecko"],
+      [/Safari\/(\S+)/i, "Safari", "WebKit"],
+      [/Edg\/(\S+)/i, "Edge", "Blink"],
+      [/OPR\/(\S+)/i, "Opera", "Blink"],
+      [/SamsungBrowser\/(\S+)/i, "Samsung Internet", "Blink"],
+    ];
+    for (const [rx, name, engine] of browsers) {
+      const m = ua.match(rx);
+      if (m) {
+        result.client = { type: "browser", name, version: m[1], engine, engineVersion: m[1] };
+        break;
+      }
+    }
+
+    // OS
+    const oses = [
+      [/iPhone OS ([\d_]+)/i, "iOS"],
+      [/iPad.*OS ([\d_]+)/i, "iPadOS"],
+      [/Android ([\d.]+)/i, "Android"],
+      [/Windows NT ([\d.]+)/i, "Windows"],
+      [/Mac OS X ([\d_]+)/i, "macOS"],
+      [/Linux/i, "Linux"],
+      [/CrOS/i, "ChromeOS"],
+    ];
+    for (const [rx, name] of oses) {
+      const m = ua.match(rx);
+      if (m) {
+        result.os = { name, version: m[1]?.replace(/_/g, ".") ?? null, platform: /arm|aarch/i.test(ua) ? "arm" : "x86" };
+        break;
+      }
+    }
+
+    // Device
+    if (/iPhone/i.test(ua)) result.device = { type: "smartphone", brand: "Apple", model: "iPhone" };
+    else if (/iPad/i.test(ua)) result.device = { type: "tablet", brand: "Apple", model: "iPad" };
+    else if (/Android/i.test(ua)) {
+      const m = ua.match(/;\s*([^;)]+)\s+Build\//i);
+      result.device = { type: "smartphone", brand: null, model: m?.[1]?.trim() ?? null };
+    } else if (/Windows|Macintosh|Linux/i.test(ua)) {
+      result.device = { type: "desktop", brand: null, model: null };
+    }
+
+    // Bot detection
+    if (/bot|crawl|spider|slurp|googlebot|bingbot/i.test(ua)) {
+      result.bot = { name: "Unknown Bot", category: "Search bot", url: null, producer: { name: null } };
+    }
+
+    return result;
+  }
+};
+
+// ── GPU tier inference
+function inferGpuTier(renderer) {
+  if (!renderer) return null;
+  if (/apple a1[6-9]|apple m[2-9]/i.test(renderer)) return "Apple — High-end (A16+/M2+)";
+  if (/apple a1[3-5]/i.test(renderer)) return "Apple — Mid-high (A13–A15)";
+  if (/apple a[7-9]|apple a1[0-2]/i.test(renderer)) return "Apple — Mid (A7–A12)";
+  if (/apple/i.test(renderer)) return "Apple — Unknown generation";
+  if (/adreno.*(7[4-9]\d|8\d\d)/i.test(renderer)) return "Adreno — High-end (740+)";
+  if (/adreno.*(6[4-9]\d|7[0-3]\d)/i.test(renderer)) return "Adreno — Mid-high (640–730)";
+  if (/adreno.*(5\d\d|6[0-3]\d)/i.test(renderer)) return "Adreno — Mid (500–630)";
+  if (/adreno/i.test(renderer)) return "Adreno — Low/Unknown";
+  if (/mali-g[7-9]\d\d/i.test(renderer)) return "Mali — High-end (G710+)";
+  if (/mali-g[4-6]\d/i.test(renderer)) return "Mali — Mid (G41–G68)";
+  if (/mali/i.test(renderer)) return "Mali — Low/Unknown";
+  if (/powervr/i.test(renderer)) return "PowerVR";
+  if (/nvidia/i.test(renderer)) return "NVIDIA (Desktop/Laptop)";
+  if (/amd|radeon/i.test(renderer)) return "AMD (Desktop/Laptop)";
+  if (/intel/i.test(renderer)) return "Intel (Integrated)";
+  if (/swiftshader|llvmpipe|software/i.test(renderer)) return "Software Renderer";
+  return "Unknown";
+}
+
+// ── Main inspector (mirrors device-inspector.ts)
+async function inspectDevice() {
+  // UA
+  const raw = navigator.userAgent;
+  const parsed = DeviceDetectorStub.parse(raw);
+  const inAppBrowser = /FBAN|FBAV|Instagram|Twitter|TikTok|Pinterest|Snapchat|WeChat|Line\/|MicroMessenger/i.test(raw);
+
+  const ua = {
+    raw,
+    client: {
+      type: parsed.client?.type ?? null,
+      name: parsed.client?.name ?? null,
+      version: parsed.client?.version ?? null,
+      engine: parsed.client?.engine ?? null,
+      engineVersion: parsed.client?.engineVersion ?? null,
+    },
+    os: {
+      name: parsed.os?.name ?? null,
+      version: parsed.os?.version ?? null,
+      platform: parsed.os?.platform ?? null,
+    },
+    device: {
+      type: parsed.device?.type ?? null,
+      brand: parsed.device?.brand ?? null,
+      model: parsed.device?.model ?? null,
+    },
+    bot: {
+      detected: !!parsed.bot,
+      name: parsed.bot?.name ?? null,
+      category: parsed.bot?.category ?? null,
+      url: parsed.bot?.url ?? null,
+      producerName: parsed.bot?.producer?.name ?? null,
+    },
+    inAppBrowser,
+  };
+
+  // GPU
+  const canvas = document.createElement("canvas");
+  const gl2 = canvas.getContext("webgl2");
+  const gl1 = !gl2 ? (canvas.getContext("webgl") || canvas.getContext("experimental-webgl")) : null;
+  const gl = gl2 || gl1;
+
+  let unmaskedVendor = null, unmaskedRenderer = null, vendor = null, renderer = null;
+  const ext = gl?.getExtension("WEBGL_debug_renderer_info");
+  if (gl) {
+    vendor = gl.getParameter(gl.VENDOR);
+    renderer = gl.getParameter(gl.RENDERER);
+    if (ext) {
+      unmaskedVendor = gl.getParameter(ext.UNMASKED_VENDOR_WEBGL);
+      unmaskedRenderer = gl.getParameter(ext.UNMASKED_RENDERER_WEBGL);
+    }
+  }
+
+  const gp = (param) => { try { const v = gl?.getParameter(param); return typeof v === "number" ? v : null; } catch { return null; } };
+  const hasExt = (name) => { try { return !!gl?.getExtension(name); } catch { return false; } };
+
+  // WebGPU
+  let webgpu = {
+    supported: false,
+    adapterVendor: null, adapterArchitecture: null, adapterDevice: null, adapterDescription: null,
+    maxTextureDimension1D: null, maxTextureDimension2D: null, maxTextureDimension3D: null,
+    maxTextureArrayLayers: null, maxBufferSize: null, maxBindGroups: null,
+    maxSampledTexturesPerShaderStage: null, maxStorageBuffersPerShaderStage: null,
+    maxComputeWorkgroupSizeX: null, maxComputeWorkgroupSizeY: null, maxComputeWorkgroupSizeZ: null,
+  };
+  if ("gpu" in navigator) {
+    try {
+      const adapter = await navigator.gpu.requestAdapter();
+      if (adapter) {
+        const device = await adapter.requestDevice();
+        const info = await adapter.requestAdapterInfo?.().catch(() => null);
+        const lim = device.limits;
+        webgpu = {
+          supported: true,
+          adapterVendor: info?.vendor ?? null,
+          adapterArchitecture: info?.architecture ?? null,
+          adapterDevice: info?.device ?? null,
+          adapterDescription: info?.description ?? null,
+          maxTextureDimension1D: lim.maxTextureDimension1D ?? null,
+          maxTextureDimension2D: lim.maxTextureDimension2D ?? null,
+          maxTextureDimension3D: lim.maxTextureDimension3D ?? null,
+          maxTextureArrayLayers: lim.maxTextureArrayLayers ?? null,
+          maxBufferSize: lim.maxBufferSize ?? null,
+          maxBindGroups: lim.maxBindGroups ?? null,
+          maxSampledTexturesPerShaderStage: lim.maxSampledTexturesPerShaderStage ?? null,
+          maxStorageBuffersPerShaderStage: lim.maxStorageBuffersPerShaderStage ?? null,
+          maxComputeWorkgroupSizeX: lim.maxComputeWorkgroupSizeX ?? null,
+          maxComputeWorkgroupSizeY: lim.maxComputeWorkgroupSizeY ?? null,
+          maxComputeWorkgroupSizeZ: lim.maxComputeWorkgroupSizeZ ?? null,
+        };
+        device.destroy();
+      }
+    } catch {}
+  }
+
+  const gpu = {
+    webglVersion: gl2 ? 2 : gl1 ? 1 : null,
+    vendor, renderer, unmaskedVendor, unmaskedRenderer,
+    gpuTier: inferGpuTier(unmaskedRenderer),
+    maxTextureSize: gp(gl?.MAX_TEXTURE_SIZE),
+    maxCubeMapTextureSize: gp(gl?.MAX_CUBE_MAP_TEXTURE_SIZE),
+    maxRenderBufferSize: gp(gl?.MAX_RENDERBUFFER_SIZE),
+    maxTextureImageUnits: gp(gl?.MAX_TEXTURE_IMAGE_UNITS),
+    maxVertexAttribs: gp(gl?.MAX_VERTEX_ATTRIBS),
+    maxVaryingVectors: gp(gl?.MAX_VARYING_VECTORS),
+    maxFragmentUniformVectors: gp(gl?.MAX_FRAGMENT_UNIFORM_VECTORS),
+    maxVertexUniformVectors: gp(gl?.MAX_VERTEX_UNIFORM_VECTORS),
+    compressedTextures: {
+      astc: hasExt("WEBGL_compressed_texture_astc"),
+      etc1: hasExt("WEBGL_compressed_texture_etc1"),
+      etc: hasExt("WEBGL_compressed_texture_etc"),
+      pvrtc: hasExt("WEBGL_compressed_texture_pvrtc"),
+      s3tc: hasExt("WEBGL_compressed_texture_s3tc"),
+      bptc: hasExt("EXT_texture_compression_bptc"),
+      rgtc: hasExt("EXT_texture_compression_rgtc"),
+    },
+    webgpu,
+  };
+
+  // Screen
+  const dpr = window.devicePixelRatio ?? 1;
+  let hasNotch = false;
+  try {
+    if (CSS.supports("padding-top: env(safe-area-inset-top)")) {
+      const el = document.createElement("div");
+      el.style.cssText = "position:fixed;padding-top:env(safe-area-inset-top);pointer-events:none";
+      document.body.appendChild(el);
+      hasNotch = parseFloat(getComputedStyle(el).paddingTop) > 0;
+      document.body.removeChild(el);
+    }
+  } catch {}
+
+  const screen_ = {
+    screenWidth: screen.width,
+    screenHeight: screen.height,
+    devicePixelRatio: dpr,
+    physicalWidth: Math.round(screen.width * dpr),
+    physicalHeight: Math.round(screen.height * dpr),
+    availWidth: screen.availWidth,
+    availHeight: screen.availHeight,
+    viewportWidth: document.documentElement.clientWidth,
+    viewportHeight: document.documentElement.clientHeight,
+    orientation: screen.orientation?.type ?? null,
+    colorDepth: screen.colorDepth,
+    pixelDepth: screen.pixelDepth,
+    hasNotch,
+  };
+
+  // Platform
+  const conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+  const pointerTypes = [];
+  if (window.matchMedia("(pointer: fine)").matches) pointerTypes.push("fine");
+  if (window.matchMedia("(pointer: coarse)").matches) pointerTypes.push("coarse");
+  if (window.matchMedia("(any-pointer: fine)").matches) pointerTypes.push("any-fine");
+  if (window.matchMedia("(any-pointer: coarse)").matches) pointerTypes.push("any-coarse");
+
+  const platform = {
+    deviceMemoryGB: navigator.deviceMemory ?? null,
+    hardwareConcurrency: navigator.hardwareConcurrency ?? null,
+    connectionEffectiveType: conn?.effectiveType ?? null,
+    connectionDownlinkMbps: conn?.downlink ?? null,
+    connectionRtt: conn?.rtt ?? null,
+    connectionSaveData: conn?.saveData ?? null,
+    platform: navigator.platform,
+    maxTouchPoints: navigator.maxTouchPoints ?? 0,
+    touchSupported: navigator.maxTouchPoints > 0 || "ontouchstart" in window,
+    pointerTypes,
+    language: navigator.language,
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone ?? null,
+  };
+
+  return {
+    timestamp: new Date().toISOString(),
+    sessionId: `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+    ua, gpu, screen: screen_, platform,
+  };
+}
+
+// ── JSON Tree renderer
+function renderValue(val, depth = 0) {
+  if (val === null) return `<span class="jnull">null</span>`;
+  if (val === true) return `<span class="jbt">true</span>`;
+  if (val === false) return `<span class="jbf">false</span>`;
+  if (typeof val === "number") return `<span class="jn">${val}</span>`;
+  if (typeof val === "string") return `<span class="js">"${escHtml(val)}"</span>`;
+  if (Array.isArray(val)) {
+    if (val.length === 0) return `<span class="jbrace">[]</span>`;
+    const items = val.map(v => `<li>${renderValue(v, depth + 1)}</li>`).join("");
+    const id = `node-${Math.random().toString(36).slice(2)}`;
+    return `<span class="jbrace">[</span>
+      <span class="collapsible-toggle" onclick="toggleNode('${id}', this)"></span>
+      <ul id="${id}" class="collapsible-children">${items}</ul>
+      <span class="collapsed-preview jmuted">…${val.length} items</span>
+      <span class="jbrace">]</span>`;
+  }
+  if (typeof val === "object") {
+    const keys = Object.keys(val);
+    if (keys.length === 0) return `<span class="jbrace">{}</span>`;
+    const id = `node-${Math.random().toString(36).slice(2)}`;
+    const items = keys.map((k, i) => {
+      const comma = i < keys.length - 1 ? `<span class="jcomma">,</span>` : "";
+      return `<li><span class="jk">"${escHtml(k)}"</span><span class="jmuted">: </span>${renderValue(val[k], depth + 1)}${comma}</li>`;
+    }).join("");
+    return `<span class="jbrace">{</span>
+      <span class="collapsible-toggle" onclick="toggleNode('${id}', this)"></span>
+      <ul id="${id}" class="collapsible-children">${items}</ul>
+      <span class="collapsed-preview jmuted">…${keys.length} keys</span>
+      <span class="jbrace">}</span>`;
+  }
+  return String(val);
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
+
+function toggleNode(id, btn) {
+  const el = document.getElementById(id);
+  const isCollapsed = btn.classList.toggle("collapsed");
+  el.classList.toggle("hidden", isCollapsed);
+}
+
+// ── Section builder
+function makeSection(id, icon, title, subtitle, bodyHTML, startOpen = true) {
+  return `
+    <div class="json-section" id="${id}">
+      <div class="json-section-header ${startOpen ? "open" : ""}" onclick="toggleSection(this)">
+        <div class="section-icon" style="background:rgba(0,212,255,0.08)">${icon}</div>
+        <div style="flex:1">
+          <div class="section-title">${title}</div>
+          <div class="section-subtitle">${subtitle}</div>
+        </div>
+        <svg class="chevron ${startOpen ? "open" : ""}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="6 9 12 15 18 9"/>
+        </svg>
+      </div>
+      <div class="json-body ${startOpen ? "open" : ""}">
+        ${bodyHTML}
+      </div>
+    </div>`;
+}
+
+function toggleSection(header) {
+  const body = header.nextElementSibling;
+  header.classList.toggle("open");
+  body.classList.toggle("open");
+  header.querySelector(".chevron").classList.toggle("open");
+}
+
+// ── Summary cards
+function makeSummaryCards(d) {
+  const cards = [
+    { label: "Browser", value: `${d.ua.client.name ?? "?"} ${d.ua.client.version?.split(".")[0] ?? ""}`, sub: d.ua.client.engine },
+    { label: "OS", value: `${d.ua.os.name ?? "?"}`, sub: d.ua.os.version },
+    { label: "Device Type", value: d.ua.device.type ?? "Unknown", sub: [d.ua.device.brand, d.ua.device.model].filter(Boolean).join(" ") || "—" },
+    { label: "GPU Tier", value: d.gpu.gpuTier ?? "Unknown", sub: null },
+    { label: "WebGL", value: d.gpu.webglVersion ? `v${d.gpu.webglVersion}` : "None", sub: `Max texture: ${d.gpu.maxTextureSize?.toLocaleString() ?? "?"} px` },
+    { label: "WebGPU", value: "", badge: d.gpu.webgpu.supported, sub: d.gpu.webgpu.supported ? `Max 2D: ${d.gpu.webgpu.maxTextureDimension2D?.toLocaleString()}` : "Not supported" },
+    { label: "Screen (CSS)", value: `${d.screen.screenWidth} × ${d.screen.screenHeight}`, sub: `DPR ${d.screen.devicePixelRatio}` },
+    { label: "Physical px", value: `${d.screen.physicalWidth} × ${d.screen.physicalHeight}`, sub: `${d.screen.colorDepth}-bit colour` },
+    { label: "Viewport", value: `${d.screen.viewportWidth} × ${d.screen.viewportHeight}`, sub: d.screen.orientation ?? "—" },
+    { label: "RAM", value: d.platform.deviceMemoryGB ? `≥${d.platform.deviceMemoryGB} GB` : "Unknown", sub: `${d.platform.hardwareConcurrency ?? "?"} logical cores` },
+    { label: "Touch", value: "", badge: d.platform.touchSupported, sub: `${d.platform.maxTouchPoints} touch points` },
+    { label: "Bot", value: "", badge: !d.ua.bot.detected, badgeYesLabel: "Clean", badgeNoLabel: "Bot!", sub: d.ua.inAppBrowser ? "In-app WebView" : "Standard browser" },
+  ];
+
+  return `<div class="summary-grid">${cards.map(c => `
+    <div class="summary-card">
+      <div class="label">${c.label}</div>
+      ${"badge" in c
+        ? `<div class="value"><span class="badge ${c.badge ? "yes" : "no"}">${c.badge ? (c.badgeYesLabel ?? "Yes") : (c.badgeNoLabel ?? "No")}</span></div>`
+        : `<div class="value" title="${c.value}">${c.value}</div>`}
+      ${c.sub ? `<div class="sub">${c.sub}</div>` : ""}
+    </div>`).join("")}
+  </div>`;
+}
+
+// ── Compressed texture matrix
+function makeTextureMatrix(ct) {
+  const formats = [
+    { key: "astc", label: "ASTC", desc: "Modern iOS + Android flagship" },
+    { key: "etc", label: "ETC2", desc: "Android (OpenGL ES 3.0+)" },
+    { key: "etc1", label: "ETC1", desc: "Older Android" },
+    { key: "pvrtc", label: "PVRTC", desc: "Older Apple GPUs" },
+    { key: "s3tc", label: "S3TC / DXT", desc: "Desktop + some Android" },
+    { key: "bptc", label: "BPTC / BC7", desc: "Modern desktop" },
+    { key: "rgtc", label: "RGTC / BC4-5", desc: "Desktop" },
+  ];
+  return `<div class="texture-matrix">
+    ${formats.map(f => `
+      <div class="texture-item ${ct[f.key] ? "supported" : "unsupported"}" title="${f.desc}">
+        <span class="texture-dot"></span>
+        <span>${f.label}</span>
+        <span style="font-size:10px;opacity:0.6">${ct[f.key] ? "✓" : "✗"}</span>
+      </div>`).join("")}
+  </div>`;
+}
+
+// ── Full page render
+function renderPage(d) {
+  const content = document.getElementById("content");
+  const ts = document.getElementById("ts");
+  const pill = document.getElementById("statusPill");
+
+  ts.textContent = d.timestamp;
+  pill.textContent = "Complete";
+  pill.className = "status-pill done";
+
+  content.innerHTML = [
+    // Summary
+    makeSection("sec-summary", "📊", "Summary", "Key metrics at a glance",
+      makeSummaryCards(d), true),
+
+    // User Agent
+    makeSection("sec-ua", "🌐", "User Agent", `${d.ua.client.name ?? "?"} on ${d.ua.os.name ?? "?"}`,
+      `<div class="json-tree">${renderValue(d.ua)}</div>`),
+
+    // GPU / WebGL
+    makeSection("sec-gpu", "🎮", "GPU / WebGL", `${d.gpu.gpuTier ?? "No WebGL"} · WebGL ${d.gpu.webglVersion ?? "N/A"}`,
+      `<div class="json-tree">${renderValue({ webglVersion: d.gpu.webglVersion, vendor: d.gpu.vendor, renderer: d.gpu.renderer, unmaskedVendor: d.gpu.unmaskedVendor, unmaskedRenderer: d.gpu.unmaskedRenderer, gpuTier: d.gpu.gpuTier, maxTextureSize: d.gpu.maxTextureSize, maxCubeMapTextureSize: d.gpu.maxCubeMapTextureSize, maxRenderBufferSize: d.gpu.maxRenderBufferSize, maxTextureImageUnits: d.gpu.maxTextureImageUnits, maxVertexAttribs: d.gpu.maxVertexAttribs, maxVaryingVectors: d.gpu.maxVaryingVectors, maxFragmentUniformVectors: d.gpu.maxFragmentUniformVectors, maxVertexUniformVectors: d.gpu.maxVertexUniformVectors })}</div>`),
+
+    // WebGPU
+    makeSection("sec-webgpu", "⚡", "WebGPU", d.gpu.webgpu.supported ? "Supported" : "Not supported",
+      `<div class="json-tree">${renderValue(d.gpu.webgpu)}</div>`, false),
+
+    // Compressed Textures
+    makeSection("sec-textures", "🗜", "Compressed Textures", "Supported formats",
+      makeTextureMatrix(d.gpu.compressedTextures) + `<div style="padding:0 16px 14px"><div class="json-tree">${renderValue(d.gpu.compressedTextures)}</div></div>`),
+
+    // Screen
+    makeSection("sec-screen", "📱", "Screen", `${d.screen.physicalWidth}×${d.screen.physicalHeight}px · DPR ${d.screen.devicePixelRatio}`,
+      `<div class="json-tree">${renderValue(d.screen)}</div>`),
+
+    // Platform
+    makeSection("sec-platform", "💻", "Platform", `${d.platform.language} · ${d.platform.timezone ?? "?"}`,
+      `<div class="json-tree">${renderValue(d.platform)}</div>`, false),
+
+    // Full JSON
+    makeSection("sec-raw", "{ }", "Full JSON", "Complete metrics object",
+      `<div class="json-tree">${renderValue(d)}</div>`, false),
+  ].join("");
+}
+
+// ── Toolbar actions
+let _metrics = null;
+
+function expandAll() {
+  document.querySelectorAll(".collapsible-toggle.collapsed").forEach(el => {
+    const id = el.getAttribute("onclick").match(/'([^']+)'/)?.[1];
+    if (id) toggleNode(id, el);
+  });
+  document.querySelectorAll(".json-body:not(.open)").forEach(b => {
+    b.classList.add("open");
+    b.previousElementSibling.classList.add("open");
+    b.previousElementSibling.querySelector(".chevron")?.classList.add("open");
+  });
+}
+
+function collapseAll() {
+  document.querySelectorAll(".collapsible-toggle:not(.collapsed)").forEach(el => {
+    const id = el.getAttribute("onclick").match(/'([^']+)'/)?.[1];
+    if (id) toggleNode(id, el);
+  });
+}
+
+function copyJSON() {
+  if (_metrics) navigator.clipboard.writeText(JSON.stringify(_metrics, null, 2));
+}
+
+function downloadJSON() {
+  if (!_metrics) return;
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([JSON.stringify(_metrics, null, 2)], { type: "application/json" }));
+  a.download = `device-metrics-${_metrics.sessionId}.json`;
+  a.click();
+}
+
+function setActive(el) {
+  document.querySelectorAll(".nav-item").forEach(n => n.classList.remove("active"));
+  el.classList.add("active");
+}
+
+// ── Bootstrap
+(async () => {
+  try {
+    _metrics = await inspectDevice();
+    renderPage(_metrics);
+  } catch (err) {
+    document.getElementById("content").innerHTML = `
+      <div class="error-panel">
+        <strong>Inspection failed</strong><br>${err.message}
+      </div>`;
+    document.getElementById("statusPill").textContent = "Error";
+    document.getElementById("statusPill").className = "status-pill error";
+  }
+})();
+</script>
+</body>
+</html>

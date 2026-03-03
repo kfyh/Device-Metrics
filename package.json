@@ -1,0 +1,28 @@
+{
+  "name": "device-inspector",
+  "version": "1.0.0",
+  "description": "Device Inspector tool",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "webpack --mode production",
+    "dev": "webpack serve --mode development",
+    "start": "webpack serve --mode development"
+  },
+  "dependencies": {
+    "device-detector": "^1.0.2",
+    "device-detector-js": "^3.0.3",
+    "node-device-detector": "latest"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.19",
+    "copy-webpack-plugin": "^11.0.0",
+    "css-loader": "^6.11.0",
+    "html-webpack-plugin": "^5.6.0",
+    "style-loader": "^3.3.4",
+    "ts-loader": "^9.5.4",
+    "typescript": "^5.3.3",
+    "webpack": "^5.90.1",
+    "webpack-cli": "^5.1.4",
+    "webpack-dev-server": "^5.0.2"
+  }
+}

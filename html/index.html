@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Device Inspector</title>
+  <link rel="stylesheet" href="main.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=JetBrains+Mono:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+</head>
+<body>
+
+<!-- ── Header ──────────────────────────────────────────────────────────────── -->
+<header>
+  <div class="logo">
+    <svg viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.5">
+      <rect x="2" y="3" width="20" height="14" rx="2"/>
+      <path d="M8 21h8M12 17v4"/>
+      <circle cx="12" cy="10" r="3"/>
+    </svg>
+  </div>
+  <div class="header-text">
+    <h1>Device Inspector</h1>
+    <p>UA · GPU · Screen · Platform telemetry probe</p>
+  </div>
+  <div class="status-pill loading" id="statusPill">Scanning…</div>
+</header>
+
+<!-- ── Toolbar ─────────────────────────────────────────────────────────────── -->
+<div class="toolbar">
+  <span class="toolbar-label">View</span>
+  <button class="btn primary" onclick="expandAll()">Expand All</button>
+  <button class="btn" onclick="collapseAll()">Collapse All</button>
+  <button class="btn" onclick="copyJSON()">Copy JSON</button>
+  <button class="btn" onclick="downloadJSON()">Download JSON</button>
+  <span class="timestamp" id="ts"></span>
+</div>
+
+<!-- ── Main ────────────────────────────────────────────────────────────────── -->
+<main>
+  <!-- Nav -->
+  <nav class="section-nav">
+    <div class="nav-label">Sections</div>
+    <a class="nav-item active" href="#sec-summary" onclick="setActive(this)">
+      <span class="nav-dot"></span>Summary
+    </a>
+    <a class="nav-item" href="#sec-ua" onclick="setActive(this)">
+      <span class="nav-dot"></span>User Agent
+    </a>
+    <a class="nav-item" href="#sec-gpu" onclick="setActive(this)">
+      <span class="nav-dot"></span>GPU / WebGL
+    </a>
+    <a class="nav-item" href="#sec-webgpu" onclick="setActive(this)">
+      <span class="nav-dot"></span>WebGPU
+    </a>
+    <a class="nav-item" href="#sec-textures" onclick="setActive(this)">
+      <span class="nav-dot"></span>Compressed Textures
+    </a>
+    <a class="nav-item" href="#sec-screen" onclick="setActive(this)">
+      <span class="nav-dot"></span>Screen
+    </a>
+    <a class="nav-item" href="#sec-platform" onclick="setActive(this)">
+      <span class="nav-dot"></span>Platform
+    </a>
+    <a class="nav-item" href="#sec-raw" onclick="setActive(this)">
+      <span class="nav-dot"></span>Full JSON
+    </a>
+  </nav>
+
+  <!-- Content -->
+  <div class="content" id="content">
+    <div class="loading-panel">
+      <div class="skeleton" style="width:60%"></div>
+      <div class="skeleton" style="width:80%"></div>
+      <div class="skeleton" style="width:50%"></div>
+      <div class="skeleton" style="width:70%"></div>
+      <div class="skeleton" style="width:90%"></div>
+    </div>
+  </div>
+</main>
+
+<!-- ─────────────────────────────────────────────────────────────────────────
+     NOTE: In your webpack build, import inspectDevice from './device-inspector'
+     and call it here. For this standalone demo we inline a self-contained
+     version of the probe so the page works without a bundler.
+───────────────────────────────────────────────────────────────────────────── -->
+<script src="bundle.js"></script>
+</body>
+</html>
+
+
